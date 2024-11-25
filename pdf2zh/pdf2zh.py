@@ -9,10 +9,10 @@ import argparse
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Container, Iterable, List, Optional
 
 import pymupdf
-from huggingface_hub import hf_hub_download
 
 from pdf2zh import __version__
 from pdf2zh.pdfexceptions import PDFValueError
@@ -25,10 +25,14 @@ OUTPUT_TYPES = ((".htm", "html"), (".html", "html"), (".xml", "xml"), (".tag", "
 
 
 def setup_log() -> None:
-    import doclayout_yolo
-
     logging.basicConfig()
-    doclayout_yolo.utils.LOGGER.setLevel(logging.WARNING)
+
+    try:
+        import doclayout_yolo
+
+        doclayout_yolo.utils.LOGGER.setLevel(logging.WARNING)
+    except ImportError:
+        pass
 
 
 def check_files(files: List[str]) -> List[str]:
@@ -67,10 +71,11 @@ def extract_text(
     lang_in: str = "",
     lang_out: str = "",
     service: str = "",
+    callback: object = None,
+    output: str = "",
     **kwargs: Any,
 ) -> AnyIO:
-    import doclayout_yolo
-
+    from pdf2zh.doclayout import DocLayoutModel
     import pdf2zh.high_level
 
     if not files:
@@ -82,15 +87,7 @@ def extract_text(
                 output_type = alttype
 
     outfp: AnyIO = sys.stdout
-    # pth = os.path.join(tempfile.gettempdir(), 'doclayout_yolo_docstructbench_imgsz1024.pt')
-    # if not os.path.exists(pth):
-    #     print('Downloading...')
-    #     urllib.request.urlretrieve("http://huggingface.co/juliozhao/DocLayout-YOLO-DocStructBench/resolve/main/doclayout_yolo_docstructbench_imgsz1024.pt",pth)
-    pth = hf_hub_download(
-        repo_id="juliozhao/DocLayout-YOLO-DocStructBench",
-        filename="doclayout_yolo_docstructbench_imgsz1024.pt",
-    )
-    model = doclayout_yolo.YOLOv10(pth)
+    model = DocLayoutModel.load_available()
 
     for file in files:
         filename = os.path.splitext(os.path.basename(file))[0]
@@ -116,11 +113,11 @@ def extract_text(
                                 doc_en.xref_set_key(
                                     xref, f"{label}Font/{font}", f"{font_id[font]} 0 R"
                                 )
-                except:
+                except Exception:
                     pass
-        doc_en.save(f"{filename}-en.pdf")
+        doc_en.save(Path(output) / f"{filename}-en.pdf")
 
-        with open(f"{filename}-en.pdf", "rb") as fp:
+        with open(Path(output) / f"{filename}-en.pdf", "rb") as fp:
             obj_patch: dict = pdf2zh.high_level.extract_text_to_fp(fp, **locals())
 
         for obj_id, ops_new in obj_patch.items():
@@ -131,19 +128,15 @@ def extract_text(
             doc_en.update_stream(obj_id, ops_new.encode())
 
         doc_zh = doc_en
-        doc_dual = pymupdf.open(f"{filename}-en.pdf")
+        doc_dual = pymupdf.open(Path(output) / f"{filename}-en.pdf")
         doc_dual.insert_file(doc_zh)
         for id in range(page_count):
             doc_dual.move_page(page_count + id, id * 2 + 1)
-        doc_zh.save(f"{filename}-zh.pdf", deflate=1)
-        doc_dual.save(f"{filename}-dual.pdf", deflate=1)
+        doc_zh.save(Path(output) / f"{filename}-zh.pdf", deflate=1)
+        doc_dual.save(Path(output) / f"{filename}-dual.pdf", deflate=1)
         doc_zh.close()
         doc_dual.close()
-        try:  # fix (main): permission error @ https://github.com/Byaidu/PDFMathTranslate/issues/84
-            os.remove(f"{filename}-en.pdf")
-        except Exception as e:
-            print(f"File removal failed due to occupation / not existing, pass.\n{e}")
-            pass
+        os.remove(Path(output) / f"{filename}-en.pdf")
 
     return
 
@@ -220,7 +213,14 @@ def create_parser() -> argparse.ArgumentParser:
         "-s",
         type=str,
         default="google",
-        help="The service to use for translating.",
+        help="The service to use for translation.",
+    )
+    parse_params.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default="",
+        help="Output directory for files.",
     )
     parse_params.add_argument(
         "--thread",
@@ -234,6 +234,11 @@ def create_parser() -> argparse.ArgumentParser:
         "-i",
         action="store_true",
         help="Interact with GUI.",
+    )
+    parse_params.add_argument(
+        "--share",
+        action="store_true",
+        help="Enable Gradio Share",
     )
 
     return parser
@@ -267,7 +272,7 @@ def main(args: Optional[List[str]] = None) -> int:
     if parsed_args.interactive:
         from pdf2zh.gui import setup_gui
 
-        setup_gui()
+        setup_gui(parsed_args.share)
         return 0
 
     setup_log()
