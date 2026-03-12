@@ -71,7 +71,7 @@ We've provided a detailed table on the required [environment variables](https://
 | **Dify**             | `dify`         | `DIFY_API_URL`, `DIFY_API_KEY`                                        | `[Your DIFY URL]`, `[Your Key]`                          | See [Dify](https://github.com/langgenius/dify),Three variables, lang_out, lang_in, and text, need to be defined in Dify's workflow input.                                                                 |
 | **AnythingLLM**      | `anythingllm`  | `AnythingLLM_URL`, `AnythingLLM_APIKEY`                               | `[Your AnythingLLM URL]`, `[Your Key]`                   | See [anything-llm](https://github.com/Mintplex-Labs/anything-llm)                                                                                                                                         |
 |**Argos Translate**|`argos`| | |See [argos-translate](https://github.com/argosopentech/argos-translate)|
-|**Grok**|`grok`| `GORK_API_KEY`, `GORK_MODEL` | `[Your GORK_API_KEY]`, `grok-2-1212` |See [Grok](https://docs.x.ai/docs/overview)|
+|**Grok**|`grok`| `GROK_API_KEY`, `GROK_MODEL`, `GROK_BASE_URL` (optional) | `[Your GROK_API_KEY]`, `grok-2-1212`, `https://api.x.ai/v1` |See [Grok](https://docs.x.ai/docs/overview). **Note:** When using custom proxy, ensure `GROK_BASE_URL` ends with `/v1` (e.g., `http://your-proxy:8000/v1`)|
 |**Groq**|`groq`| `GROQ_API_KEY`, `GROQ_MODEL` | `[Your GROQ_API_KEY]`, `llama-3-3-70b-versatile` |See [Groq](https://console.groq.com/docs/models)|
 |**DeepSeek**|`deepseek`| `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL` | `[Your DEEPSEEK_API_KEY]`, `deepseek-chat` |See [DeepSeek](https://www.deepseek.com/)|
 |**OpenAI-Liked**|`openailiked`| `OPENAILIKED_BASE_URL`, `OPENAILIKED_API_KEY`, `OPENAILIKED_MODEL` | `url`, `[Your Key]`, `model name` | None |
@@ -219,6 +219,8 @@ pdf2zh -i --config config.json
 
 example config.json
 
+> **⚠️ Important:** When using OpenAI-compatible APIs or custom proxies (like Grok, OpenAI-liked, etc.), ensure the `BASE_URL` ends with `/v1` (e.g., `https://api.openai.com/v1` or `http://your-proxy:8000/v1`). Missing the `/v1` suffix will result in 404 errors.
+
 ```json
 {
     "USE_MODELSCOPE": "0",
@@ -238,6 +240,14 @@ example config.json
             "envs": {
                 "OLLAMA_HOST": "http://127.0.0.1:11434",
                 "OLLAMA_MODEL": "gemma2"
+            }
+        },
+        {
+            "name": "grok",
+            "envs": {
+                "GROK_BASE_URL": "https://api.x.ai/v1",
+                "GROK_API_KEY": "your-api-key",
+                "GROK_MODEL": "grok-2-1212"
             }
         }
     ]
@@ -285,6 +295,8 @@ configuration file. Among them:
 
 A usable configuration is as follows:
 
+> **⚠️ Important:** The `BASE_URL` must end with `/v1` for OpenAI-compatible APIs.
+
 ```json
 {
     "USE_MODELSCOPE": "0",
@@ -292,8 +304,9 @@ A usable configuration is as follows:
         {
             "name": "grok",
             "envs": {
-                "GORK_API_KEY": null,
-                "GORK_MODEL": "grok-2-1212"
+                "GROK_BASE_URL": "https://api.x.ai/v1",
+                "GROK_API_KEY": "your-api-key",
+                "GROK_MODEL": "grok-2-1212"
             }
         },
         {
