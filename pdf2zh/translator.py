@@ -970,7 +970,7 @@ class MiniMaxTranslator(OpenAITranslator):
     name = "minimax"
     envs = {
         "MINIMAX_API_KEY": None,
-        "MINIMAX_MODEL": "MiniMax-M2.5",
+        "MINIMAX_MODEL": "MiniMax-M2.7",
     }
     CustomPrompt = True
 
