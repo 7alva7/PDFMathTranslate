@@ -7,20 +7,12 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from string import Template
 from typing import List, Optional
 
 from pdf2zh import __version__, log
-from pdf2zh.high_level import translate, download_remote_fonts
-from pdf2zh.doclayout import OnnxModel, ModelInstance
-import os
-
-from pdf2zh.config import ConfigManager
-from babeldoc.translation_config import TranslationConfig as YadtConfig
-from babeldoc.high_level import async_translate as yadt_translate
-from babeldoc.high_level import init as yadt_init
-from babeldoc.main import create_progress_handler
 
 logger = logging.getLogger(__name__)
 
@@ -244,6 +236,8 @@ def find_all_files_in_directory(directory_path):
 
 
 def main(args: Optional[List[str]] = None) -> int:
+    parsed_args = parse_args(args)
+
     from rich.logging import RichHandler
 
     logging.basicConfig(level=logging.INFO, handlers=[RichHandler()])
@@ -258,17 +252,21 @@ def main(args: Optional[List[str]] = None) -> int:
     logging.getLogger("http11").setLevel("CRITICAL")
     logging.getLogger("http11").propagate = False
 
-    parsed_args = parse_args(args)
-
     if parsed_args.config:
+        from pdf2zh.config import ConfigManager
+
         ConfigManager.custome_config(parsed_args.config)
 
     if parsed_args.debug:
         log.setLevel(logging.DEBUG)
 
     if parsed_args.onnx:
+        from pdf2zh.doclayout import ModelInstance, OnnxModel
+
         ModelInstance.value = OnnxModel(parsed_args.onnx)
     else:
+        from pdf2zh.doclayout import ModelInstance, OnnxModel
+
         ModelInstance.value = OnnxModel.load_available()
 
     if parsed_args.interactive:
@@ -322,14 +320,24 @@ def main(args: Optional[List[str]] = None) -> int:
     if parsed_args.dir:
         untranlate_file = find_all_files_in_directory(parsed_args.files[0])
         parsed_args.files = untranlate_file
+        from pdf2zh.high_level import translate
+
         translate(model=ModelInstance.value, **vars(parsed_args))
         return 0
+
+    from pdf2zh.high_level import translate
 
     translate(model=ModelInstance.value, **vars(parsed_args))
     return 0
 
 
 def yadt_main(parsed_args) -> int:
+    from babeldoc.high_level import async_translate as yadt_translate
+    from babeldoc.high_level import init as yadt_init
+    from babeldoc.main import create_progress_handler
+    from babeldoc.translation_config import TranslationConfig as YadtConfig
+    from pdf2zh.high_level import download_remote_fonts
+
     if parsed_args.dir:
         untranlate_file = find_all_files_in_directory(parsed_args.files[0])
     else:
