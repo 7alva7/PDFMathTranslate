@@ -30,6 +30,7 @@ from pdf2zh.translator import (
     GoogleTranslator,
     GrokTranslator,
     GroqTranslator,
+    MiniMaxTranslator,
     ModelScopeTranslator,
     OllamaTranslator,
     OpenAIlikedTranslator,
@@ -54,9 +55,9 @@ class PDFConverterEx(PDFConverter):
 
     def begin_page(self, page, ctm) -> None:
         # 重载替换 cropbox
-        (x0, y0, x1, y1) = page.cropbox
-        (x0, y0) = apply_matrix_pt(ctm, (x0, y0))
-        (x1, y1) = apply_matrix_pt(ctm, (x1, y1))
+        x0, y0, x1, y1 = page.cropbox
+        x0, y0 = apply_matrix_pt(ctm, (x0, y0))
+        x1, y1 = apply_matrix_pt(ctm, (x1, y1))
         mediabox = (0, 0, abs(x0 - x1), abs(y0 - y1))
         self.cur_item = LTPage(page.pageno, mediabox)
 
@@ -160,7 +161,7 @@ class TranslateConverter(PDFConverterEx):
         if not envs:
             envs = {}
         for translator in [GoogleTranslator, BingTranslator, DeepLTranslator, DeepLXTranslator, OllamaTranslator, XinferenceTranslator, AzureOpenAITranslator,
-                           OpenAITranslator, ZhipuTranslator, ModelScopeTranslator, SiliconTranslator, GeminiTranslator, AzureTranslator, TencentTranslator, DifyTranslator, AnythingLLMTranslator, ArgosTranslator, GrokTranslator, GroqTranslator, DeepseekTranslator, OpenAIlikedTranslator, QwenMtTranslator, X302AITranslator]:
+                           OpenAITranslator, ZhipuTranslator, ModelScopeTranslator, SiliconTranslator, GeminiTranslator, AzureTranslator, TencentTranslator, DifyTranslator, AnythingLLMTranslator, ArgosTranslator, GrokTranslator, GroqTranslator, DeepseekTranslator, MiniMaxTranslator, OpenAIlikedTranslator, QwenMtTranslator, X302AITranslator]:
             if service_name == translator.name:
                 self.translator = translator(lang_in, lang_out, service_model, envs=envs, prompt=prompt, ignore_cache=ignore_cache)
         if not self.translator:
