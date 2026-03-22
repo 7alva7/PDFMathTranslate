@@ -232,7 +232,7 @@ def translate_file(
     skip_subset_fonts,
     ignore_cache,
     vfont,
-    use_babeldoc,
+    mode_choice,
     recaptcha_response,
     state,
     progress=gr.Progress(),
@@ -352,9 +352,30 @@ def translate_file(
     }
 
     try:
-        if use_babeldoc:
-            return babeldoc_translate_file(**param)
-        translate(**param)
+        from pdf2zh.kernel import KernelRegistry
+        from pdf2zh.kernel.protocol import TranslateRequest
+
+        KernelRegistry.switch(mode_choice)
+        kernel = KernelRegistry.get()
+        request = TranslateRequest(
+            files=[str(file_raw)],
+            output=str(output),
+            pages=selected_page,
+            lang_in=lang_from,
+            lang_out=lang_to,
+            service=f"{translator.name}",
+            thread=int(threads),
+            envs=_envs,
+            prompt=str(prompt) if prompt else None,
+            skip_subset_fonts=skip_subset_fonts,
+            ignore_cache=ignore_cache,
+            vfont=vfont,
+        )
+        kernel.translate(
+            request,
+            callback=progress_bar,
+            cancellation_event=cancellation_event_map[session_id],
+        )
     except CancelledError:
         del cancellation_event_map[session_id]
         raise gr.Error("Translation cancelled")
@@ -632,8 +653,11 @@ with gr.Blocks(
                 prompt = gr.Textbox(
                     label="Custom Prompt for llm", interactive=True, visible=False
                 )
-                use_babeldoc = gr.Checkbox(
-                    label="Use BabelDOC", interactive=True, value=False
+                mode_choice = gr.Dropdown(
+                    label="Translation Mode",
+                    choices=["fast", "precise"],
+                    value="fast",
+                    interactive=True,
                 )
                 envs.append(prompt)
 
@@ -771,7 +795,7 @@ with gr.Blocks(
             skip_subset_fonts,
             ignore_cache,
             vfont,
-            use_babeldoc,
+            mode_choice,
             recaptcha_response,
             state,
             *envs,

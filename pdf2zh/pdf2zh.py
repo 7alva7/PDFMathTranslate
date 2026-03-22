@@ -172,6 +172,14 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parse_params.add_argument(
+        "--mode",
+        type=str,
+        choices=["fast", "precise"],
+        default="fast",
+        help="Translation mode: fast (v1) or precise (v2, requires pdf2zh_next).",
+    )
+
+    parse_params.add_argument(
         "--babeldoc",
         default=False,
         action="store_true",
@@ -324,19 +332,47 @@ def main(args: Optional[List[str]] = None) -> int:
         return 0
 
     print(parsed_args)
+
     if parsed_args.babeldoc:
         return yadt_main(parsed_args)
+
+    # Unified kernel routing — both fast and precise modes go through the registry
+    from pdf2zh.kernel import KernelRegistry
+    from pdf2zh.kernel.protocol import TranslateRequest
+
+    KernelRegistry.switch(parsed_args.mode)  # "fast" or "precise"
+    kernel = KernelRegistry.get()
+
     if parsed_args.dir:
-        untranlate_file = find_all_files_in_directory(parsed_args.files[0])
-        parsed_args.files = untranlate_file
-        from pdf2zh.high_level import translate
+        parsed_args.files = find_all_files_in_directory(parsed_args.files[0])
 
-        translate(model=ModelInstance.value, **vars(parsed_args))
-        return 0
+    # Extract prompt text (may be a Template object from file reading above)
+    prompt_text = None
+    if parsed_args.prompt:
+        prompt_text = (
+            parsed_args.prompt.template
+            if hasattr(parsed_args.prompt, "template")
+            else parsed_args.prompt
+        )
 
-    from pdf2zh.high_level import translate
-
-    translate(model=ModelInstance.value, **vars(parsed_args))
+    request = TranslateRequest(
+        files=parsed_args.files,
+        output=parsed_args.output,
+        pages=parsed_args.pages,
+        lang_in=parsed_args.lang_in,
+        lang_out=parsed_args.lang_out,
+        service=parsed_args.service,
+        thread=parsed_args.thread,
+        vfont=parsed_args.vfont,
+        vchar=parsed_args.vchar,
+        envs={},
+        prompt=prompt_text,
+        skip_subset_fonts=parsed_args.skip_subset_fonts,
+        ignore_cache=parsed_args.ignore_cache,
+        compatible=parsed_args.compatible,
+        debug=parsed_args.debug,
+    )
+    kernel.translate(request)
     return 0
 
 
