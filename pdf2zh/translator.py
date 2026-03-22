@@ -1061,10 +1061,10 @@ class OpenAIlikedTranslator(OpenAITranslator):
             base_url=base_url,
             api_key=api_key,
             ignore_cache=ignore_cache,
+            prompt=prompt,
             stop_tokens=self.envs.get("OPENAILIKED_STOP_TOKENS", "").split(),
             max_tokens=int(self.envs.get("OPENAILIKED_MAX_TOKENS", -1)),
         )
-        self.prompttext = prompt
         # Parse stream option from config (default to False for compatibility)
         stream_val = self.envs.get("OPENAILIKED_STREAM", "false").lower()
         self.stream = stream_val == "true"
