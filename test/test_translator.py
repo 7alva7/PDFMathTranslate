@@ -161,7 +161,7 @@ class TestOllamaTranslator(unittest.TestCase):
                 <think>
                 Thinking...
                 </think>
-                    
+
                 天空呈现蓝色是因为...
                 """)
 
