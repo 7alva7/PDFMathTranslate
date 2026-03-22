@@ -40,11 +40,25 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+      - name: Cache apt packages
+        if: runner.os == 'Linux'
+        id: cache-apt
+        uses: actions/cache@v4
+        with:
+          path: ~/apt-cache
+          key: apt-libreoffice-${{ matrix.runner }}
+
       - name: Install system dependencies
         if: runner.os == 'Linux'
         run: |
+          if [ -d ~/apt-cache ] && [ "$(ls -A ~/apt-cache 2>/dev/null)" ]; then
+            echo "Restoring cached apt packages..."
+            sudo cp ~/apt-cache/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+          fi
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libreoffice-core libreoffice-writer
+          mkdir -p ~/apt-cache
+          cp /var/cache/apt/archives/*.deb ~/apt-cache/ 2>/dev/null || true
 
       - name: Install dependencies
         run: |
