@@ -62,6 +62,10 @@ Scientific PDF document translation preserving layouts.
 
 <h2 id="updates">2. Recent Updates</h2>
 
+- [March 22, 2026] Supporting MiniMax (PR by [@octo-patch](https://github.com/octo-patch))
+- [March 22, 2026] Fixing OpenAI-related issues (PR by [@samqin123](https://github.com/samqin123))
+- [March 22, 2026] Fixing HTTP-related issues (PR by [@soukouki](https://github.com/soukouki))
+- [March 22, 2026] Faster model loading on mac and OONX platforms, GUI starting-up, version printing, and continuous integration.(by [@reycn](https://github.com/reycn))
 - [May 9, 2025] pdf2zh 2.0 Preview Version [#586](https://github.com/Byaidu/PDFMathTranslate/issues/586): The Windows ZIP file and Docker image are now available.
 
   > [!NOTE]
@@ -69,10 +73,6 @@ Scientific PDF document translation preserving layouts.
   > 2.0 Moved to a new repository under the organization: [PDFMathTranslate/PDFMathTranslate-next](https://github.com/PDFMathTranslate/PDFMathTranslate-next)
   > 
   > Version 2.0 official release has been published.
-
-- [Mar. 3, 2025] Experimental support for the new backend [BabelDOC](https://github.com/funstory-ai/BabelDOC) WebUI added as an experimental option (by [@awwaawwa](https://github.com/awwaawwa))
-- [Feb. 22 2025] Better release CI and well-packaged windows-amd64 exe (by [@awwaawwa](https://github.com/awwaawwa))
-
 
 <h2 id="use-section">3. Use 🌟</h2>
 <h3 id="demo">3.1 Online Service 🌟</h3>

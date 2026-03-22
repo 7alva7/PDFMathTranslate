@@ -45,11 +45,16 @@
 
 <h2 id="updates">更新</h2>
 
+
+- [2026年3月22日] 支持 MiniMax（由[@octo-patch](https://github.com/octo-patch) 提交的PR）
+
+- [2026年3月22日] 修复与 OpenAI 相关的问题（由[@samqin123](https://github.com/samqin123) 提交的PR）
+
+- [2026年3月22日] 修复与 HTTP 相关的问题（由[@soukouki](https://github.com/soukouki) 提交的PR）
+
+- [2026年3月22日] 在 mac 和 OONX 平台上加快模型加载速度，GUI 启动，版本打印和持续集成。（由[@reycn](https://github.com/reycn) 提交）
 - [2025 年 2 月 22 日] 更好的发布 CI 和精心打包的 windows-amd64 exe (由 [@awwaawwa](https://github.com/awwaawwa) 提供)
 - [2024 年 12 月 24 日] 翻译器现在支持在 [Xinference](https://github.com/xorbitsai/inference) 上使用本地模型 _(由 [@imClumsyPanda](https://github.com/imClumsyPanda) 提供)_
-- [2024 年 12 月 19 日] 现在支持非 PDF/A 文档，使用 `-cp` _(由 [@reycn](https://github.com/reycn) 提供)_
-- [2024 年 12 月 13 日] 额外支持后端 _(由 [@YadominJinta](https://github.com/YadominJinta) 提供)_
-- [2024 年 12 月 10 日] 翻译器现在支持 Azure 上的 OpenAI 模型 _(由 [@yidasanqian](https://github.com/yidasanqian) 提供)_
 
 <h2 id="preview">预览</h2>
 <div align="center">
