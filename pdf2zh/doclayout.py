@@ -1,4 +1,5 @@
 import abc
+import os
 
 import cv2
 import numpy as np
@@ -66,14 +67,37 @@ class YoloBox:
 
 class OnnxModel(DocLayoutModel):
     def __init__(self, model_path: str):
+        model_path = str(model_path)
         self.model_path = model_path
 
-        model = onnx.load(model_path)
+        # Extract metadata without full model deserialization
+        model = onnx.load(model_path, load_external_data=False)
         metadata = {d.key: d.value for d in model.metadata_props}
         self._stride = ast.literal_eval(metadata["stride"])
         self._names = ast.literal_eval(metadata["names"])
+        del model  # free memory before creating session
 
-        self.model = onnxruntime.InferenceSession(model.SerializeToString())
+        sess_options = onnxruntime.SessionOptions()
+        sess_options.graph_optimization_level = (
+            onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        )
+
+        providers = onnxruntime.get_available_providers()
+
+        # Providers like CoreML generate compiled nodes that cannot be
+        # serialized, so only cache the optimized graph for CPU-only.
+        compiled_providers = {"CoreMLExecutionProvider", "TensorrtExecutionProvider"}
+        can_cache = not compiled_providers.intersection(providers)
+        if can_cache:
+            optimized_path = model_path + ".optimized"
+            if os.path.exists(optimized_path):
+                model_path = optimized_path
+            else:
+                sess_options.optimized_model_filepath = optimized_path
+
+        self.model = onnxruntime.InferenceSession(
+            model_path, sess_options, providers=providers
+        )
 
     @staticmethod
     def from_pretrained():
