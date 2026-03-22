@@ -146,6 +146,14 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parse_params.add_argument(
+        "--backend",
+        type=str,
+        choices=["auto", "cpu", "cuda", "dml"],
+        default="auto",
+        help="ONNX Runtime execution provider: auto, cpu, cuda, dml.",
+    )
+
+    parse_params.add_argument(
         "--serverport",
         type=int,
         help="custom WebUI port.",
@@ -261,13 +269,13 @@ def main(args: Optional[List[str]] = None) -> int:
     if parsed_args.debug:
         log.setLevel(logging.DEBUG)
 
-    if parsed_args.onnx:
-        from pdf2zh.doclayout import ModelInstance, OnnxModel
+    from pdf2zh.doclayout import ModelInstance, OnnxModel, set_backend
 
+    set_backend(parsed_args.backend)
+
+    if parsed_args.onnx:
         ModelInstance.value = OnnxModel(parsed_args.onnx)
     else:
-        from pdf2zh.doclayout import ModelInstance, OnnxModel
-
         ModelInstance.value = OnnxModel.load_available()
 
     if parsed_args.interactive:

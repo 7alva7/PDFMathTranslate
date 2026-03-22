@@ -1,4 +1,5 @@
 import abc
+import logging
 import os
 
 import cv2
@@ -16,6 +17,26 @@ except ImportError as e:
             "Download it at https://aka.ms/vs/17/release/vc_redist.x64.exe"
         ) from e
     raise
+
+logger = logging.getLogger(__name__)
+
+_BACKEND_PROVIDERS = {
+    "cpu": ["CPUExecutionProvider"],
+    "cuda": ["CUDAExecutionProvider", "CPUExecutionProvider"],
+    "dml": ["DmlExecutionProvider", "CPUExecutionProvider"],
+}
+
+_preferred_backend: str | None = None
+
+
+def set_backend(name: str) -> None:
+    """Set the ONNX Runtime execution provider backend.
+
+    Args:
+        name: One of 'auto', 'cpu', 'cuda', 'dml'.
+    """
+    global _preferred_backend
+    _preferred_backend = None if name == "auto" else name
 
 
 class DocLayoutModel(abc.ABC):
@@ -82,7 +103,10 @@ class OnnxModel(DocLayoutModel):
             onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         )
 
-        providers = onnxruntime.get_available_providers()
+        if _preferred_backend and _preferred_backend in _BACKEND_PROVIDERS:
+            providers = _BACKEND_PROVIDERS[_preferred_backend]
+        else:
+            providers = onnxruntime.get_available_providers()
 
         # Providers like CoreML generate compiled nodes that cannot be
         # serialized, so only cache the optimized graph for CPU-only.
@@ -98,6 +122,7 @@ class OnnxModel(DocLayoutModel):
         self.model = onnxruntime.InferenceSession(
             model_path, sess_options, providers=providers
         )
+        logger.info("ONNX Runtime providers: %s", self.model.get_providers())
 
     @staticmethod
     def from_pretrained():

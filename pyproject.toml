@@ -50,6 +50,12 @@ argostranslate = [
 mcp = [
     "mcp>=1.6.0",
 ]
+cuda = [
+    "onnxruntime-gpu",
+]
+dml = [
+    "onnxruntime-directml",
+]
 
 [dependency-groups]
 dev = [
