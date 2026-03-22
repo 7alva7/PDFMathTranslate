@@ -402,8 +402,8 @@ class OpenAITranslator(BaseTranslator):
         "OPENAI_BASE_URL": "https://api.openai.com/v1",
         "OPENAI_API_KEY": None,
         "OPENAI_MODEL": "gpt-4o-mini",
-        "OPENAI_STOP_TOKENS": "", # Space separated list of stop tokens
-        "OPENAI_MAX_TOKENS": -1, # Specify -1 to call the API without setting max_tokens
+        "OPENAI_STOP_TOKENS": "",  # Space separated list of stop tokens
+        "OPENAI_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
     CustomPrompt = True
 
@@ -435,7 +435,7 @@ class OpenAITranslator(BaseTranslator):
             else int(self.envs.get("OPENAI_MAX_TOKENS", -1))
         )
         self.options = {
-            "temperature": 0, # 随机采样可能会打断公式标记
+            "temperature": 0,  # 随机采样可能会打断公式标记
             "stop": stop_tokens,
             "max_tokens": max_tokens if max_tokens > 0 else None,
         }
@@ -990,8 +990,8 @@ class OpenAIlikedTranslator(OpenAITranslator):
         "OPENAILIKED_BASE_URL": None,
         "OPENAILIKED_API_KEY": None,
         "OPENAILIKED_MODEL": None,
-        "OPENAILIKED_STOP_TOKENS": "", # Space separated list of stop tokens
-        "OPENAILIKED_MAX_TOKENS": -1, # Specify -1 to call the API without setting max_tokens
+        "OPENAILIKED_STOP_TOKENS": "",  # Space separated list of stop tokens
+        "OPENAILIKED_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
     CustomPrompt = True
 
