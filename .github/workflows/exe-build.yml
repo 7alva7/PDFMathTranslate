@@ -24,7 +24,7 @@ jobs:
           sparse-checkout: babeldoc/assets/embedding_assets_metadata.py
       - name: Cached Assets
         id: cache-assets
-        uses: actions/cache@v4.3.0
+        uses: actions/cache@v5
         with:
           path: ~/.cache/babeldoc
           key: test-1-babeldoc-assets-${{ hashFiles('babeldoctemp1234567/babeldoc/assets/embedding_assets_metadata.py') }}
@@ -102,7 +102,7 @@ jobs:
           uv run --active babeldoc --generate-offline-assets ./build
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: win64-exe
           path: ./build
@@ -119,7 +119,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download build artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: win64-exe
           path: ./build
@@ -163,7 +163,7 @@ jobs:
           ./build/pdf2zh.exe ./test/file/translate.cli.plain.text.pdf -o ./test/file
           
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: ./test/file/
