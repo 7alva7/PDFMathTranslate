@@ -430,12 +430,12 @@ class OpenAITranslator(BaseTranslator):
         stop_tokens = (
             stop_tokens
             if stop_tokens is not None
-            else self.envs.get("OPENAI_STOP_TOKENS", "").split()
+            else (self.envs.get("OPENAI_STOP_TOKENS") or "").split()
         )
         max_tokens = (
             max_tokens
             if max_tokens is not None
-            else int(self.envs.get("OPENAI_MAX_TOKENS", -1))
+            else int(self.envs.get("OPENAI_MAX_TOKENS") or -1)
         )
         self.options = {
             "temperature": 0,  # 随机采样可能会打断公式标记
@@ -474,10 +474,17 @@ class OpenAITranslator(BaseTranslator):
             messages=self.prompt(text, self.prompttext),
             stream=self.stream,
         )
-        if not response.choices:
-            if hasattr(response, "error"):
-                raise ValueError("Error response from Service", response.error)
-        content = response.choices[0].message.content.strip()
+        if self.stream:
+            collected = []
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    collected.append(chunk.choices[0].delta.content)
+            content = "".join(collected).strip()
+        else:
+            if not response.choices:
+                if hasattr(response, "error"):
+                    raise ValueError("Error response from Service", response.error)
+            content = response.choices[0].message.content.strip()
         content = self.think_filter_regex.sub("", content).strip()
         return content
 
@@ -1098,10 +1105,17 @@ class OpenAIlikedTranslator(OpenAITranslator):
             messages=self.prompt(text, self.prompttext),
             stream=self.stream,
         )
-        if not response.choices:
-            if hasattr(response, "error"):
-                raise ValueError("Error response from Service", response.error)
-        content = response.choices[0].message.content.strip()
+        if self.stream:
+            collected = []
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    collected.append(chunk.choices[0].delta.content)
+            content = "".join(collected).strip()
+        else:
+            if not response.choices:
+                if hasattr(response, "error"):
+                    raise ValueError("Error response from Service", response.error)
+            content = response.choices[0].message.content.strip()
         content = self.think_filter_regex.sub("", content).strip()
         return content
 
