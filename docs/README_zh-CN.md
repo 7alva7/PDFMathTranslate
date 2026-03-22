@@ -77,7 +77,7 @@
 <details open>
   <summary>1. UV 安装</summary>
 
-1. 安装 Python (3.10 <= 版本 <= 3.12)
+1. 安装 Python (3.11 <= 版本 <= 3.12)
 2. 安装我们的包：
 
    ```bash
@@ -104,7 +104,7 @@
 
 <details>
   <summary id="gui">3. 图形用户界面</summary>
-1. 安装 Python (3.10 <= 版本 <= 3.12)
+1. 安装 Python (3.11 <= 版本 <= 3.12)
 2. 安装我们的包：
 
 ```bash
@@ -172,7 +172,7 @@ pip install pdf2zh
 <details>
   <summary>6. 命令行</summary>
 
-1. 已安装 Python（3.10 <= 版本 <= 3.12）
+1. 已安装 Python（3.11 <= 版本 <= 3.12）
 2. 安装我们的包：
 
    ```bash

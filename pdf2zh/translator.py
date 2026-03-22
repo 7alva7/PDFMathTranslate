@@ -29,7 +29,6 @@ from tenacity import retry, retry_if_exception_type
 from tenacity import stop_after_attempt
 from tenacity import wait_exponential
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -408,6 +407,8 @@ class OpenAITranslator(BaseTranslator):
         "OPENAI_API_KEY": None,
         "OPENAI_MODEL": "gpt-4o-mini",
         "OPENAI_STREAM": "true",  # Configurable: set to "true" (default) or "false"
+        "OPENAI_STOP_TOKENS": "",  # Space separated list of stop tokens
+        "OPENAI_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
     CustomPrompt = True
 
@@ -421,18 +422,36 @@ class OpenAITranslator(BaseTranslator):
         envs=None,
         prompt=None,
         ignore_cache=False,
+        stop_tokens=None,
+        max_tokens=None,
     ):
         self.set_envs(envs)
         if not model:
             model = self.envs["OPENAI_MODEL"]
         super().__init__(lang_in, lang_out, model, ignore_cache)
-        self.options = {"temperature": 0}  # 随机采样可能会打断公式标记
+        stop_tokens = (
+            stop_tokens
+            if stop_tokens is not None
+            else self.envs.get("OPENAI_STOP_TOKENS", "").split()
+        )
+        max_tokens = (
+            max_tokens
+            if max_tokens is not None
+            else int(self.envs.get("OPENAI_MAX_TOKENS", -1))
+        )
+        self.options = {
+            "temperature": 0,  # 随机采样可能会打断公式标记
+            "stop": stop_tokens,
+            "max_tokens": max_tokens if max_tokens > 0 else None,
+        }
         self.client = openai.OpenAI(
             base_url=base_url or self.envs["OPENAI_BASE_URL"],
             api_key=api_key or self.envs["OPENAI_API_KEY"],
         )
         self.prompttext = prompt
         self.add_cache_impact_parameters("temperature", self.options["temperature"])
+        self.add_cache_impact_parameters("stop", self.options["stop"])
+        self.add_cache_impact_parameters("max_tokens", self.options["max_tokens"])
         self.add_cache_impact_parameters("prompt", self.prompt("", self.prompttext))
         think_filter_regex = r"^<think>.+?\n*(</think>|\n)*(</think>)\n*"
         self.add_cache_impact_parameters("think_filter_regex", think_filter_regex)
@@ -979,6 +998,35 @@ class DeepseekTranslator(OpenAITranslator):
         self.prompttext = prompt
 
 
+class MiniMaxTranslator(OpenAITranslator):
+    # https://platform.minimaxi.com/document/introduction
+    name = "minimax"
+    envs = {
+        "MINIMAX_API_KEY": None,
+        "MINIMAX_MODEL": "MiniMax-M2.7",
+    }
+    CustomPrompt = True
+
+    def __init__(
+        self, lang_in, lang_out, model, envs=None, prompt=None, ignore_cache=False
+    ):
+        self.set_envs(envs)
+        base_url = "https://api.minimax.io/v1"
+        api_key = self.envs["MINIMAX_API_KEY"]
+        if not model:
+            model = self.envs["MINIMAX_MODEL"]
+        super().__init__(
+            lang_in,
+            lang_out,
+            model,
+            base_url=base_url,
+            api_key=api_key,
+            ignore_cache=ignore_cache,
+        )
+        self.options = {"temperature": 0.1}
+        self.prompttext = prompt
+
+
 class OpenAIlikedTranslator(OpenAITranslator):
     name = "openailiked"
     envs = {
@@ -986,6 +1034,8 @@ class OpenAIlikedTranslator(OpenAITranslator):
         "OPENAILIKED_API_KEY": None,
         "OPENAILIKED_MODEL": None,
         "OPENAILIKED_STREAM": "false",  # Configurable: set to "true" or "false"
+        "OPENAILIKED_STOP_TOKENS": "",  # Space separated list of stop tokens
+        "OPENAILIKED_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
     CustomPrompt = True
 
@@ -1013,6 +1063,8 @@ class OpenAIlikedTranslator(OpenAITranslator):
             base_url=base_url,
             api_key=api_key,
             ignore_cache=ignore_cache,
+            stop_tokens=self.envs.get("OPENAILIKED_STOP_TOKENS", "").split(),
+            max_tokens=int(self.envs.get("OPENAILIKED_MAX_TOKENS", -1)),
         )
         self.prompttext = prompt
         # Parse stream option from config (default to False for compatibility)

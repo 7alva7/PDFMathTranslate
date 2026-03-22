@@ -30,6 +30,7 @@ from pdf2zh.translator import (
     ArgosTranslator,
     GeminiTranslator,
     GoogleTranslator,
+    MiniMaxTranslator,
     ModelScopeTranslator,
     OllamaTranslator,
     OpenAITranslator,
@@ -49,7 +50,25 @@ from babeldoc import __version__ as babeldoc_version
 
 logger = logging.getLogger(__name__)
 
-BABELDOC_MODEL = OnnxModel.load_available()
+
+class _LazyModel:
+    """Defers model loading until first access so the GUI starts instantly."""
+
+    def __init__(self):
+        self._model = None
+
+    def _ensure_loaded(self):
+        if self._model is None:
+            self._model = OnnxModel.load_available()
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        self._ensure_loaded()
+        return getattr(self._model, name)
+
+
+BABELDOC_MODEL = _LazyModel()
 # The following variables associate strings with translators
 service_map: dict[str, BaseTranslator] = {
     "Google": GoogleTranslator,
@@ -72,6 +91,7 @@ service_map: dict[str, BaseTranslator] = {
     "Grok": GrokTranslator,
     "Groq": GroqTranslator,
     "DeepSeek": DeepseekTranslator,
+    "MiniMax": MiniMaxTranslator,
     "OpenAI-liked": OpenAIlikedTranslator,
     "Ali Qwen-Translation": QwenMtTranslator,
     "302.AI": X302AITranslator,

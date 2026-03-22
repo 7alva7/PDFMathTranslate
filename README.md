@@ -93,7 +93,7 @@ For different use cases, we provide distinct methods to use our program:
 <details open>
   <summary>3.2.1 Python: Install using uv</summary>
 
-1. Python installed (3.10 <= version <= 3.12)
+1. Python installed (3.11 <= version <= 3.12)
 
 2. Install our package:
 
@@ -112,7 +112,7 @@ For different use cases, we provide distinct methods to use our program:
 <details>
   <summary>3.2.2 Python: Install using pip</summary>
 
-1. Python installed (3.10 <= version <= 3.12)
+1. Python installed (3.11 <= version <= 3.12)
 2. Install our package:
 
    ```bash
@@ -129,7 +129,7 @@ For different use cases, we provide distinct methods to use our program:
 <details>
   <summary>3.3.3 Python: Graphic user interface</summary>
 
-1. Python installed (3.10 <= version <= 3.12)
+1. Python installed (3.11 <= version <= 3.12)
 
 2. Install our package:
 
