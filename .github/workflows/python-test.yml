@@ -12,6 +12,9 @@ jobs:
   build-and-test:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    if: >-
+      !startsWith(github.event.pull_request.title, 'doc:') &&
+      !startsWith(github.event.pull_request.title, 'doc(')
     strategy:
       fail-fast: false
       matrix:

@@ -29,18 +29,28 @@ jobs:
     outputs:
       # debug purpose
       is_main_repo: ${{ github.repository == 'Byaidu/PDFMathTranslate' }}
+      is_doc_only: ${{ steps.check-doc.outputs.is_doc_only }}
     steps:
       - run: echo "Running repository check"
+      - name: Check if commit is doc-only
+        id: check-doc
+        run: |
+          MSG=$(echo "${{ github.event.head_commit.message }}" | head -n 1)
+          if [[ "$MSG" == doc:* ]] || [[ "$MSG" == "doc("* ]]; then
+            echo "is_doc_only=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_doc_only=false" >> $GITHUB_OUTPUT
+          fi
 
   test:
     needs: check-repository
     uses: ./.github/workflows/python-test.yml
-    if: needs.check-repository.outputs.is_main_repo == 'true'
+    if: needs.check-repository.outputs.is_main_repo == 'true' && needs.check-repository.outputs.is_doc_only != 'true'
 
   build:
     name: Build distribution 📦
     needs: [test, check-repository]
-    if: needs.check-repository.outputs.is_main_repo == 'true'
+    if: needs.check-repository.outputs.is_main_repo == 'true' && needs.check-repository.outputs.is_doc_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -162,7 +172,7 @@ jobs:
     needs:
       - build
       - check-repository
-    if: needs.check-repository.outputs.is_main_repo == 'true'
+    if: needs.check-repository.outputs.is_main_repo == 'true' && needs.check-repository.outputs.is_doc_only != 'true'
     environment:
       name: ${{ needs.build.outputs.is_release != '' && 'pypi' || 'testpypi' }}
       url: ${{ needs.build.outputs.is_release != '' && 'https://hub.docker.com/r/byaidu/pdf2zh/tags?name=latest' || 'https://hub.docker.com/r/byaidu/pdf2zh/tags?name=dev' }}
@@ -258,7 +268,7 @@ jobs:
       - build-docker-image
       - check-repository
       - test-win64-exe
-    if: needs.check-repository.outputs.is_main_repo == 'true'
+    if: needs.check-repository.outputs.is_main_repo == 'true' && needs.check-repository.outputs.is_doc_only != 'true'
     environment:
       name: ${{ needs.build.outputs.is_release != '' && 'pypi' || 'testpypi' }}
       url: ${{ needs.build.outputs.is_release != '' && 'https://hub.docker.com/r/byaidu/pdf2zh/tags?name=latest' || 'https://hub.docker.com/r/byaidu/pdf2zh/tags?name=dev' }}
@@ -324,7 +334,7 @@ jobs:
     timeout-minutes: 30
     needs:
       - check-repository
-    if: needs.check-repository.outputs.is_main_repo == 'true'
+    if: needs.check-repository.outputs.is_main_repo == 'true' && needs.check-repository.outputs.is_doc_only != 'true'
     steps:
       - name: checkout babeldoc metadata
         uses: actions/checkout@v5
@@ -371,7 +381,7 @@ jobs:
     needs:
       - build-win64-exe
       - check-repository
-    if: needs.check-repository.outputs.is_main_repo == 'true'
+    if: needs.check-repository.outputs.is_main_repo == 'true' && needs.check-repository.outputs.is_doc_only != 'true'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -431,6 +441,7 @@ jobs:
       - test-win64-exe
     if: |
       always() && needs.check-repository.outputs.is_main_repo == 'true' &&
+      needs.check-repository.outputs.is_doc_only != 'true' &&
       (needs.publish-to-pypi.result == 'success' || needs.publish-to-testpypi.result == 'success') &&
       needs.merge-docker-image.result == 'success' &&
       needs.test-win64-exe.result == 'success'
@@ -462,6 +473,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: always() && needs.check-repository.outputs.is_main_repo == 'true' &&
+      needs.check-repository.outputs.is_doc_only != 'true' &&
       needs.release-draft.result == 'success'
     steps:
       - name: 检出代码
