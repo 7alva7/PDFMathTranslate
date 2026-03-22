@@ -2,6 +2,7 @@ import asyncio
 import cgi
 import os
 import shutil
+import socket
 import uuid
 from asyncio import CancelledError
 from pathlib import Path
@@ -821,6 +822,16 @@ def parse_user_passwd(file_path: str) -> tuple:
     return tuple_list, content
 
 
+def _has_ipv6() -> bool:
+    """Check whether the system can bind an IPv6 socket."""
+    try:
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        sock.close()
+        return True
+    except OSError:
+        return False
+
+
 def setup_gui(
     share: bool = False, auth_file: list = ["", ""], server_port=7860
 ) -> None:
@@ -835,74 +846,49 @@ def setup_gui(
         - None
     """
     user_list, html = parse_user_passwd(auth_file)
+
+    auth_kwargs = {}
+    if len(user_list) > 0:
+        auth_kwargs = {"auth": user_list, "auth_message": html}
+
     if flag_demo:
         demo.launch(server_name="0.0.0.0", max_file_size="5mb", inbrowser=True)
-    else:
-        if len(user_list) == 0:
-            try:
-                demo.launch(
-                    server_name="0.0.0.0",
-                    debug=True,
-                    inbrowser=True,
-                    share=share,
-                    server_port=server_port,
-                )
-            except Exception:
-                print(
-                    "Error launching GUI using 0.0.0.0.\nThis may be caused by global mode of proxy software."
-                )
-                try:
-                    demo.launch(
-                        server_name="127.0.0.1",
-                        debug=True,
-                        inbrowser=True,
-                        share=share,
-                        server_port=server_port,
-                    )
-                except Exception:
-                    print(
-                        "Error launching GUI using 127.0.0.1.\nThis may be caused by global mode of proxy software."
-                    )
-                    demo.launch(
-                        debug=True, inbrowser=True, share=True, server_port=server_port
-                    )
-        else:
-            try:
-                demo.launch(
-                    server_name="0.0.0.0",
-                    debug=True,
-                    inbrowser=True,
-                    share=share,
-                    auth=user_list,
-                    auth_message=html,
-                    server_port=server_port,
-                )
-            except Exception:
-                print(
-                    "Error launching GUI using 0.0.0.0.\nThis may be caused by global mode of proxy software."
-                )
-                try:
-                    demo.launch(
-                        server_name="127.0.0.1",
-                        debug=True,
-                        inbrowser=True,
-                        share=share,
-                        auth=user_list,
-                        auth_message=html,
-                        server_port=server_port,
-                    )
-                except Exception:
-                    print(
-                        "Error launching GUI using 127.0.0.1.\nThis may be caused by global mode of proxy software."
-                    )
-                    demo.launch(
-                        debug=True,
-                        inbrowser=True,
-                        share=True,
-                        auth=user_list,
-                        auth_message=html,
-                        server_port=server_port,
-                    )
+        return
+
+    # Try binding addresses in order: "::" accepts both IPv4+IPv6 on most
+    # dual-stack systems, "0.0.0.0" is IPv4-only, "127.0.0.1" is loopback,
+    # and finally fall back to Gradio's share mode.
+    bind_addresses = []
+    if _has_ipv6():
+        bind_addresses.append("::")
+    bind_addresses.append("0.0.0.0")
+    bind_addresses.append("127.0.0.1")
+
+    for addr in bind_addresses:
+        try:
+            demo.launch(
+                server_name=addr,
+                debug=True,
+                inbrowser=True,
+                share=share,
+                server_port=server_port,
+                **auth_kwargs,
+            )
+            return
+        except Exception:
+            print(
+                f"Error launching GUI using {addr}.\n"
+                "This may be caused by global mode of proxy software."
+            )
+
+    # Last resort: let Gradio create a share link
+    demo.launch(
+        debug=True,
+        inbrowser=True,
+        share=True,
+        server_port=server_port,
+        **auth_kwargs,
+    )
 
 
 # For auto-reloading while developing
