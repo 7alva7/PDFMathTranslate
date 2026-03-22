@@ -318,7 +318,11 @@ class OllamaTranslator(BaseTranslator):
             "temperature": 0,  # 随机采样可能会打断公式标记
             "num_predict": 2000,
         }
-        self.client = ollama.Client(host=self.envs["OLLAMA_HOST"])
+        # Disable proxy for local Ollama connection
+        self.client = ollama.Client(
+            host=self.envs["OLLAMA_HOST"],
+            proxies={"all://": None},  # Disable all proxies
+        )
         self.prompt_template = prompt
         self.add_cache_impact_parameters("temperature", self.options["temperature"])
 
@@ -402,6 +406,7 @@ class OpenAITranslator(BaseTranslator):
         "OPENAI_BASE_URL": "https://api.openai.com/v1",
         "OPENAI_API_KEY": None,
         "OPENAI_MODEL": "gpt-4o-mini",
+        "OPENAI_STREAM": "true",  # Configurable: set to "true" (default) or "false"
         "OPENAI_STOP_TOKENS": "",  # Space separated list of stop tokens
         "OPENAI_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
@@ -451,6 +456,9 @@ class OpenAITranslator(BaseTranslator):
         think_filter_regex = r"^<think>.+?\n*(</think>|\n)*(</think>)\n*"
         self.add_cache_impact_parameters("think_filter_regex", think_filter_regex)
         self.think_filter_regex = re.compile(think_filter_regex, flags=re.DOTALL)
+        # Parse stream option from config (default to True for OpenAI)
+        stream_val = self.envs.get("OPENAI_STREAM", "true").lower()
+        self.stream = stream_val == "true"
 
     @retry(
         retry=retry_if_exception_type(openai.RateLimitError),
@@ -466,6 +474,7 @@ class OpenAITranslator(BaseTranslator):
             model=self.model,
             **self.options,
             messages=self.prompt(text, self.prompttext),
+            stream=self.stream,
         )
         if not response.choices:
             if hasattr(response, "error"):
@@ -908,6 +917,8 @@ class GrokTranslator(OpenAITranslator):
     envs = {
         "GROK_API_KEY": None,
         "GROK_MODEL": "grok-2-1212",
+        "GROK_BASE_URL": "https://api.x.ai/v1",  # Configurable base URL
+        "GROK_STREAM": "true",  # Configurable: set to "true" (default) or "false"
     }
     CustomPrompt = True
 
@@ -915,7 +926,7 @@ class GrokTranslator(OpenAITranslator):
         self, lang_in, lang_out, model, envs=None, prompt=None, ignore_cache=False
     ):
         self.set_envs(envs)
-        base_url = "https://api.x.ai/v1"
+        base_url = self.envs.get("GROK_BASE_URL", "https://api.x.ai/v1")
         api_key = self.envs["GROK_API_KEY"]
         if not model:
             model = self.envs["GROK_MODEL"]
@@ -928,6 +939,9 @@ class GrokTranslator(OpenAITranslator):
             ignore_cache=ignore_cache,
         )
         self.prompttext = prompt
+        # Override stream setting from config (default to True)
+        stream_val = self.envs.get("GROK_STREAM", "true").lower()
+        self.stream = stream_val == "true"
 
 
 class GroqTranslator(OpenAITranslator):
@@ -1019,6 +1033,7 @@ class OpenAIlikedTranslator(OpenAITranslator):
         "OPENAILIKED_BASE_URL": None,
         "OPENAILIKED_API_KEY": None,
         "OPENAILIKED_MODEL": None,
+        "OPENAILIKED_STREAM": "false",  # Configurable: set to "true" or "false"
         "OPENAILIKED_STOP_TOKENS": "",  # Space separated list of stop tokens
         "OPENAILIKED_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
@@ -1052,6 +1067,24 @@ class OpenAIlikedTranslator(OpenAITranslator):
             max_tokens=int(self.envs.get("OPENAILIKED_MAX_TOKENS", -1)),
         )
         self.prompttext = prompt
+        # Parse stream option from config (default to False for compatibility)
+        stream_val = self.envs.get("OPENAILIKED_STREAM", "false").lower()
+        self.stream = stream_val == "true"
+
+    def do_translate(self, text) -> str:
+        """Override to support configurable streaming."""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            **self.options,
+            messages=self.prompt(text, self.prompttext),
+            stream=self.stream,
+        )
+        if not response.choices:
+            if hasattr(response, "error"):
+                raise ValueError("Error response from Service", response.error)
+        content = response.choices[0].message.content.strip()
+        content = self.think_filter_regex.sub("", content).strip()
+        return content
 
 
 class QwenMtTranslator(OpenAITranslator):
