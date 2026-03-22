@@ -769,10 +769,31 @@ class TencentTranslator(BaseTranslator):
         self.req.Target = self.lang_out
         self.req.ProjectId = 0
 
-    def do_translate(self, text):
+    # Tencent API limit: 6000 chars per request. Use 5000 as safe threshold.
+    _MAX_CHARS = 5000
+
+    def _translate_chunk(self, text):
         self.req.SourceText = text
         resp: TextTranslateResponse = self.client.TextTranslate(self.req)
         return resp.TargetText
+
+    def do_translate(self, text):
+        if len(text) <= self._MAX_CHARS:
+            return self._translate_chunk(text)
+
+        # Split on newlines, keeping the delimiter
+        chunks = []
+        current = ""
+        for line in text.splitlines(keepends=True):
+            if len(current) + len(line) > self._MAX_CHARS and current:
+                chunks.append(current)
+                current = line
+            else:
+                current += line
+        if current:
+            chunks.append(current)
+
+        return "".join(self._translate_chunk(c) for c in chunks)
 
 
 class AnythingLLMTranslator(BaseTranslator):
