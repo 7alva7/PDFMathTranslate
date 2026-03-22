@@ -984,6 +984,35 @@ class DeepseekTranslator(OpenAITranslator):
         self.prompttext = prompt
 
 
+class MiniMaxTranslator(OpenAITranslator):
+    # https://platform.minimaxi.com/document/introduction
+    name = "minimax"
+    envs = {
+        "MINIMAX_API_KEY": None,
+        "MINIMAX_MODEL": "MiniMax-M2.7",
+    }
+    CustomPrompt = True
+
+    def __init__(
+        self, lang_in, lang_out, model, envs=None, prompt=None, ignore_cache=False
+    ):
+        self.set_envs(envs)
+        base_url = "https://api.minimax.io/v1"
+        api_key = self.envs["MINIMAX_API_KEY"]
+        if not model:
+            model = self.envs["MINIMAX_MODEL"]
+        super().__init__(
+            lang_in,
+            lang_out,
+            model,
+            base_url=base_url,
+            api_key=api_key,
+            ignore_cache=ignore_cache,
+        )
+        self.options = {"temperature": 0.1}
+        self.prompttext = prompt
+
+
 class OpenAIlikedTranslator(OpenAITranslator):
     name = "openailiked"
     envs = {
