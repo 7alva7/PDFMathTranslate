@@ -860,7 +860,7 @@ def setup_gui(
     # and finally fall back to Gradio's share mode.
     bind_addresses = []
     if _has_ipv6():
-        bind_addresses.append("::")
+        bind_addresses.append("[::]")
     bind_addresses.append("0.0.0.0")
     bind_addresses.append("127.0.0.1")
 
