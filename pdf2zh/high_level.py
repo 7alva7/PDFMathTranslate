@@ -15,6 +15,8 @@ from typing import Any, BinaryIO, List, Optional, Dict
 import numpy as np
 import requests
 import tqdm
+
+from pdf2zh.converter_docx import convert_to_pdf, is_convertible
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfexceptions import PDFValueError
 from pdfminer.pdfinterp import PDFResourceManager
@@ -352,7 +354,15 @@ def translate(
                 raise PDFValueError(
                     f"Errors occur in downloading the PDF file. Please check the link(s).\nError:\n{e}"
                 )
-        filename = os.path.splitext(os.path.basename(file))[0]
+
+        # Convert doc/docx to PDF if needed
+        _converted_pdf = None
+        if is_convertible(file):
+            _converted_pdf = convert_to_pdf(file)
+            filename = os.path.splitext(os.path.basename(file))[0]
+            file = _converted_pdf
+        else:
+            filename = os.path.splitext(os.path.basename(file))[0]
 
         # If the commandline has specified converting to PDF/A format
         # --compatible / -cp

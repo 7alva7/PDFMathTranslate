@@ -13,6 +13,7 @@ from string import Template
 from typing import List, Optional
 
 from pdf2zh import __version__, log
+from pdf2zh.converter_docx import convert_to_pdf, is_convertible
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         nargs="*",
-        help="One or more paths to PDF files.",
+        help="One or more paths to PDF/Word files.",
     )
     parser.add_argument(
         "--version",
@@ -228,7 +229,7 @@ def find_all_files_in_directory(directory_path):
     for root, _, files in os.walk(directory_path):
         for file in files:
             # Check if the file is a PDF
-            if file.lower().endswith(".pdf"):
+            if file.lower().endswith((".pdf", ".doc", ".docx")):
                 # Append the full file path to the list
                 file_paths.append(os.path.join(root, file))
 
@@ -435,6 +436,10 @@ def yadt_main(parsed_args) -> int:
 
     for file in untranlate_file:
         file = file.strip("\"'")
+        _converted_pdf = None
+        if is_convertible(file):
+            _converted_pdf = convert_to_pdf(file)
+            file = _converted_pdf
         yadt_config = YadtConfig(
             input_file=file,
             font=font_path,
@@ -468,6 +473,11 @@ def yadt_main(parsed_args) -> int:
                         break
 
         asyncio.run(yadt_translate_coro(yadt_config))
+        if _converted_pdf:
+            try:
+                os.unlink(_converted_pdf)
+            except OSError:
+                pass
     return 0
 
 
