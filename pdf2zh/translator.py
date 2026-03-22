@@ -29,7 +29,6 @@ from tenacity import retry, retry_if_exception_type
 from tenacity import stop_after_attempt
 from tenacity import wait_exponential
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -319,7 +318,9 @@ class OllamaTranslator(BaseTranslator):
             "temperature": 0,  # 随机采样可能会打断公式标记
             "num_predict": 2000,
         }
-        self.client = ollama.Client(host=self.envs["OLLAMA_HOST"])
+        self.client = ollama.Client(
+            host=self.envs["OLLAMA_HOST"],
+        )
         self.prompt_template = prompt
         self.add_cache_impact_parameters("temperature", self.options["temperature"])
 
@@ -403,6 +404,9 @@ class OpenAITranslator(BaseTranslator):
         "OPENAI_BASE_URL": "https://api.openai.com/v1",
         "OPENAI_API_KEY": None,
         "OPENAI_MODEL": "gpt-4o-mini",
+        "OPENAI_STREAM": "true",  # Configurable: set to "true" (default) or "false"
+        "OPENAI_STOP_TOKENS": "",  # Space separated list of stop tokens
+        "OPENAI_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
     CustomPrompt = True
 
@@ -416,22 +420,43 @@ class OpenAITranslator(BaseTranslator):
         envs=None,
         prompt=None,
         ignore_cache=False,
+        stop_tokens=None,
+        max_tokens=None,
     ):
         self.set_envs(envs)
         if not model:
             model = self.envs["OPENAI_MODEL"]
         super().__init__(lang_in, lang_out, model, ignore_cache)
-        self.options = {"temperature": 0}  # 随机采样可能会打断公式标记
+        stop_tokens = (
+            stop_tokens
+            if stop_tokens is not None
+            else self.envs.get("OPENAI_STOP_TOKENS", "").split()
+        )
+        max_tokens = (
+            max_tokens
+            if max_tokens is not None
+            else int(self.envs.get("OPENAI_MAX_TOKENS", -1))
+        )
+        self.options = {
+            "temperature": 0,  # 随机采样可能会打断公式标记
+            "stop": stop_tokens,
+            "max_tokens": max_tokens if max_tokens > 0 else None,
+        }
         self.client = openai.OpenAI(
             base_url=base_url or self.envs["OPENAI_BASE_URL"],
             api_key=api_key or self.envs["OPENAI_API_KEY"],
         )
         self.prompttext = prompt
         self.add_cache_impact_parameters("temperature", self.options["temperature"])
+        self.add_cache_impact_parameters("stop", self.options["stop"])
+        self.add_cache_impact_parameters("max_tokens", self.options["max_tokens"])
         self.add_cache_impact_parameters("prompt", self.prompt("", self.prompttext))
         think_filter_regex = r"^<think>.+?\n*(</think>|\n)*(</think>)\n*"
         self.add_cache_impact_parameters("think_filter_regex", think_filter_regex)
         self.think_filter_regex = re.compile(think_filter_regex, flags=re.DOTALL)
+        # Parse stream option from config (default to True for OpenAI)
+        stream_val = self.envs.get("OPENAI_STREAM", "true").lower()
+        self.stream = stream_val == "true"
 
     @retry(
         retry=retry_if_exception_type(openai.RateLimitError),
@@ -447,6 +472,7 @@ class OpenAITranslator(BaseTranslator):
             model=self.model,
             **self.options,
             messages=self.prompt(text, self.prompttext),
+            stream=self.stream,
         )
         if not response.choices:
             if hasattr(response, "error"):
@@ -613,6 +639,35 @@ class SiliconTranslator(OpenAITranslator):
         api_key = self.envs["SILICON_API_KEY"]
         if not model:
             model = self.envs["SILICON_MODEL"]
+        super().__init__(
+            lang_in,
+            lang_out,
+            model,
+            base_url=base_url,
+            api_key=api_key,
+            ignore_cache=ignore_cache,
+        )
+        self.prompttext = prompt
+        self.add_cache_impact_parameters("prompt", self.prompt("", self.prompttext))
+
+
+class X302AITranslator(OpenAITranslator):
+    # https://doc.302.ai/
+    name = "302ai"
+    envs = {
+        "X302AI_API_KEY": None,
+        "X302AI_MODEL": "Gemma-7B",
+    }
+    CustomPrompt = True
+
+    def __init__(
+        self, lang_in, lang_out, model, envs=None, prompt=None, ignore_cache=False
+    ):
+        self.set_envs(envs)
+        base_url = "https://api.302.ai/v1"
+        api_key = self.envs["X302AI_API_KEY"]
+        if not model:
+            model = self.envs["X302AI_MODEL"]
         super().__init__(
             lang_in,
             lang_out,
@@ -860,6 +915,8 @@ class GrokTranslator(OpenAITranslator):
     envs = {
         "GROK_API_KEY": None,
         "GROK_MODEL": "grok-2-1212",
+        "GROK_BASE_URL": "https://api.x.ai/v1",  # Configurable base URL
+        "GROK_STREAM": "true",  # Configurable: set to "true" (default) or "false"
     }
     CustomPrompt = True
 
@@ -867,7 +924,7 @@ class GrokTranslator(OpenAITranslator):
         self, lang_in, lang_out, model, envs=None, prompt=None, ignore_cache=False
     ):
         self.set_envs(envs)
-        base_url = "https://api.x.ai/v1"
+        base_url = self.envs.get("GROK_BASE_URL", "https://api.x.ai/v1")
         api_key = self.envs["GROK_API_KEY"]
         if not model:
             model = self.envs["GROK_MODEL"]
@@ -880,6 +937,9 @@ class GrokTranslator(OpenAITranslator):
             ignore_cache=ignore_cache,
         )
         self.prompttext = prompt
+        # Override stream setting from config (default to True)
+        stream_val = self.envs.get("GROK_STREAM", "true").lower()
+        self.stream = stream_val == "true"
 
 
 class GroqTranslator(OpenAITranslator):
@@ -936,12 +996,44 @@ class DeepseekTranslator(OpenAITranslator):
         self.prompttext = prompt
 
 
+class MiniMaxTranslator(OpenAITranslator):
+    # https://platform.minimaxi.com/document/introduction
+    name = "minimax"
+    envs = {
+        "MINIMAX_API_KEY": None,
+        "MINIMAX_MODEL": "MiniMax-M2.7",
+    }
+    CustomPrompt = True
+
+    def __init__(
+        self, lang_in, lang_out, model, envs=None, prompt=None, ignore_cache=False
+    ):
+        self.set_envs(envs)
+        base_url = "https://api.minimax.io/v1"
+        api_key = self.envs["MINIMAX_API_KEY"]
+        if not model:
+            model = self.envs["MINIMAX_MODEL"]
+        super().__init__(
+            lang_in,
+            lang_out,
+            model,
+            base_url=base_url,
+            api_key=api_key,
+            ignore_cache=ignore_cache,
+        )
+        self.options = {"temperature": 0.1}
+        self.prompttext = prompt
+
+
 class OpenAIlikedTranslator(OpenAITranslator):
     name = "openailiked"
     envs = {
         "OPENAILIKED_BASE_URL": None,
         "OPENAILIKED_API_KEY": None,
         "OPENAILIKED_MODEL": None,
+        "OPENAILIKED_STREAM": "false",  # Configurable: set to "true" or "false"
+        "OPENAILIKED_STOP_TOKENS": "",  # Space separated list of stop tokens
+        "OPENAILIKED_MAX_TOKENS": -1,  # Specify -1 to call the API without setting max_tokens
     }
     CustomPrompt = True
 
@@ -969,8 +1061,28 @@ class OpenAIlikedTranslator(OpenAITranslator):
             base_url=base_url,
             api_key=api_key,
             ignore_cache=ignore_cache,
+            prompt=prompt,
+            stop_tokens=self.envs.get("OPENAILIKED_STOP_TOKENS", "").split(),
+            max_tokens=int(self.envs.get("OPENAILIKED_MAX_TOKENS", -1)),
         )
-        self.prompttext = prompt
+        # Parse stream option from config (default to False for compatibility)
+        stream_val = self.envs.get("OPENAILIKED_STREAM", "false").lower()
+        self.stream = stream_val == "true"
+
+    def do_translate(self, text) -> str:
+        """Override to support configurable streaming."""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            **self.options,
+            messages=self.prompt(text, self.prompttext),
+            stream=self.stream,
+        )
+        if not response.choices:
+            if hasattr(response, "error"):
+                raise ValueError("Error response from Service", response.error)
+        content = response.choices[0].message.content.strip()
+        content = self.think_filter_regex.sub("", content).strip()
+        return content
 
 
 class QwenMtTranslator(OpenAITranslator):
