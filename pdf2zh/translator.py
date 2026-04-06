@@ -439,17 +439,19 @@ class OpenAITranslator(BaseTranslator):
         )
         self.options = {
             "temperature": 0,  # 随机采样可能会打断公式标记
-            "stop": stop_tokens,
-            "max_tokens": max_tokens if max_tokens > 0 else None,
         }
+        if stop_tokens:
+            self.options["stop"] = stop_tokens
+        if max_tokens > 0:
+            self.options["max_tokens"] = max_tokens
         self.client = openai.OpenAI(
             base_url=base_url or self.envs["OPENAI_BASE_URL"],
             api_key=api_key or self.envs["OPENAI_API_KEY"],
         )
         self.prompttext = prompt
         self.add_cache_impact_parameters("temperature", self.options["temperature"])
-        self.add_cache_impact_parameters("stop", self.options["stop"])
-        self.add_cache_impact_parameters("max_tokens", self.options["max_tokens"])
+        self.add_cache_impact_parameters("stop", self.options.get("stop"))
+        self.add_cache_impact_parameters("max_tokens", self.options.get("max_tokens"))
         self.add_cache_impact_parameters("prompt", self.prompt("", self.prompttext))
         think_filter_regex = r"^<think>.+?\n*(</think>|\n)*(</think>)\n*"
         self.add_cache_impact_parameters("think_filter_regex", think_filter_regex)
