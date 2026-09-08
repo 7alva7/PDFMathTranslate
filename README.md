@@ -244,6 +244,29 @@ For docker deployment on cloud service:
 
 <h2 id="usage">4. Technical Details</h2>
 
+### Experimental automatic OCR (fast mode)
+
+Fast mode automatically runs local OCR on selected image-only pages before
+translation. Native text, existing OCR layers, and blank pages are skipped;
+the original pages in dual output remain unchanged. Install with
+`pip install 'pdf2zh[ocr]'` (or `pip install -e '.[ocr]'` from this checkout).
+The first scanned page downloads the requested language data from Tesseract's
+`tessdata_fast` 4.1.0 release into `~/.cache/pdf2zh/tessdata/4.1.0`; subsequent
+runs reuse it offline. Native-text PDFs do not trigger downloads.
+OCR uses the input language; `PDF2ZH_OCR_LANGUAGE=eng+deu` overrides it with
+Tesseract language codes. Set `TESSDATA_PREFIX` to use your own data without
+automatic downloads.
+
+PyMuPDF supplies the OCR engine; the optional extra adds Pooch for cached downloads.
+No separate Tesseract executable is required.
+OCR words are regrouped into paragraphs within detected layout regions before
+translation, with wrapped lines and soft hyphens joined. Translated paragraphs
+start at the median source font size and shrink to fit their original boxes;
+detected figures, tables, and standalone formulas remain untouched.
+The initial implementation targets white-background scans: partial scans on
+pages that already contain text are skipped, and handwritten text or inline
+equations may be recognized incorrectly. Precise mode is unchanged.
+
 ### 4.1 Advanced options
 
 Execute the translation command in the command line to generate the translated document `example-mono.pdf` and the bilingual document `example-dual.pdf` in the current working directory. Use Google as the default translation service. More support translation services can find [HERE](https://github.com/Byaidu/PDFMathTranslate/blob/main/docs/ADVANCED.md#services).

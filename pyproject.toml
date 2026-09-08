@@ -28,7 +28,7 @@ dependencies = [
     "onnx",
     "onnxruntime",
     "opencv-python-headless",
-    "tencentcloud-sdk-python-tmt",
+    "tencentcloud-sdk-python-tmt==3.1.70",  # newer releases remove TextTranslate
     "pdfminer-six==20250416",
     "gradio_pdf>=0.0.21",
     "pikepdf",
@@ -39,6 +39,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ocr = [
+    "pooch>=1.8,<2",  # first-use downloads for PyMuPDF's built-in OCR
+]
 backend = [
     "flask",
     "celery",
